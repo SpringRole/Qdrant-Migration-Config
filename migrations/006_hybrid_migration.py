@@ -227,8 +227,8 @@ def run_migration_with_auto_restart(
 
 
 def forward(client):
-    # create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
-    # add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
+    create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
+    add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
     run_migration_with_auto_restart(client)
 
 
