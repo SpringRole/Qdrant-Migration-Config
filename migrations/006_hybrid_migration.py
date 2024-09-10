@@ -164,10 +164,13 @@ def migrate_points(
     resume_offset = load_last_offset()
     if resume_offset:
         logger.info(f"Resuming migration from offset: {resume_offset}")
-
-    records, next_offset = client.scroll(
-        src_collection_name, limit=1, with_vectors=True
-    )
+        records, next_offset = client.scroll(
+            src_collection_name, limit=1, with_vectors=True, offset=resume_offset
+        )
+    else:
+        records, next_offset = client.scroll(
+            src_collection_name, limit=1, with_vectors=True
+        )
     upload_batch(records, next_offset)
     logger.info("Migration started")
 
@@ -224,8 +227,8 @@ def run_migration_with_auto_restart(
 
 
 def forward(client):
-    create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
-    add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
+    # create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
+    # add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
     run_migration_with_auto_restart(client)
 
 
