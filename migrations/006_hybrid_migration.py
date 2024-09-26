@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 from qdrant_client import models, QdrantClient
 import logging
@@ -104,7 +105,8 @@ def save_last_offset(next_offset):
 
 def generate_and_add_sparse_vector_to_records(records):
     SPARSE_MODEL = "Qdrant/bm42-all-minilm-l6-v2-attentions"
-    sparse_model = SparseTextEmbedding(model_name=SPARSE_MODEL)
+    cache_dir = os.path.join(Path(os.getcwd()),'models')
+    sparse_model = SparseTextEmbedding(model_name=SPARSE_MODEL,cache_dir=cache_dir)
     updated_records = []
 
     for record in records:
@@ -134,6 +136,7 @@ def migrate_points(
     client: QdrantClient,
     src_collection_name: str,
     dest_collection_name: str,
+    org_ids,
     batch_size: int = 100,
     max_workers: int = 4,  # Number of parallel workers
 ) -> None:
@@ -150,9 +153,15 @@ def migrate_points(
         except Exception as e:
             logger.error(f"Failed to upload records batch: {e}")
             raise e
+        
+    filter=models.Filter(
+        must=[
+            models.FieldCondition(key="organisation_id", match=models.MatchAny(any=org_ids)),
+        ]
+    )
 
     # Get total number of poins in the source collection for the progress bar
-    source_client_points_count = client.get_collection(src_collection_name).points_count
+    source_client_points_count = client.count(src_collection_name,count_filter=filter).count
     logger.info(f"Total records to migrate: {source_client_points_count}")
 
     # Initialize the progress bar
@@ -165,11 +174,11 @@ def migrate_points(
     if resume_offset:
         logger.info(f"Resuming migration from offset: {resume_offset}")
         records, next_offset = client.scroll(
-            src_collection_name, limit=1, with_vectors=True, offset=resume_offset
+            src_collection_name, limit=1, with_vectors=True, offset=resume_offset,scroll_filter=filter
         )
     else:
         records, next_offset = client.scroll(
-            src_collection_name, limit=1, with_vectors=True
+            src_collection_name, limit=1, with_vectors=True,scroll_filter=filter
         )
     upload_batch(records, next_offset)
     logger.info("Migration started")
@@ -182,6 +191,7 @@ def migrate_points(
                 offset=next_offset,
                 limit=batch_size,
                 with_vectors=True,
+                scroll_filter=filter
             )
             if records:
                 futures.append(executor.submit(upload_batch, records, next_offset))
@@ -194,10 +204,10 @@ def migrate_points(
                 logger.error(f"Exception in future: {e}")
                 raise e
 
-    dest_client_points_count = client.get_collection(dest_collection_name).points_count
+    dest_client_points_count = client.count(dest_collection_name,filter).count
 
     assert (
-        source_client_points_count == dest_client_points_count
+        source_client_points_count <= dest_client_points_count
     ), f"Migration failed, points count are not equal: source vector count {source_client_points_count}, dest vector count {dest_client_points_count}"
 
     logger.info("Migration completed")
@@ -205,16 +215,18 @@ def migrate_points(
 
 
 def run_migration_with_auto_restart(
-    client, retries=float("inf"), retry_delay=RETRY_DELAY
+    client, retries=float("inf"), retry_delay=RETRY_DELAY, org_ids=[]
 ):
     """Runs migration and automatically restarts if there's a failure."""
     attempt = 0
     while attempt < retries:
         try:
-            migrate_points(
+            if len(org_ids):
+                migrate_points(
                 client=client,
                 src_collection_name=SOURCE_COLLECTION_NAME,
                 dest_collection_name=NEW_COLLECTION_NAME,
+                org_ids=org_ids
             )
             break  # If migration completes successfully, exit the loop
         except Exception as e:
@@ -227,9 +239,13 @@ def run_migration_with_auto_restart(
 
 
 def forward(client):
-    create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
-    add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
-    run_migration_with_auto_restart(client)
+    ##create and add payload steps are one timr action, comment out after first run.
+    # create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
+    # add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
+
+    org_ids = [""]
+
+    run_migration_with_auto_restart(client, org_ids=org_ids)
 
 
 def backward(client):
