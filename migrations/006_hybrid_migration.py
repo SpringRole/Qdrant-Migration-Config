@@ -240,10 +240,10 @@ def run_migration_with_auto_restart(
 
 def forward(client):
     ##create and add payload steps are one timr action, comment out after first run.
-    # create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
-    # add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
+    create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
+    add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
 
-    org_ids = [""]
+    org_ids = []
 
     run_migration_with_auto_restart(client, org_ids=org_ids)
 
