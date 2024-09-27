@@ -9,7 +9,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def initialize_qdrant_client(url, api_key):
-    client = QdrantClient(url=url, api_key=api_key)
+    client = QdrantClient(url=url, api_key=api_key, prefer_grpc=True)
     return client
 
 

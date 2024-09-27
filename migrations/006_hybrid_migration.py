@@ -102,11 +102,12 @@ def save_last_offset(next_offset):
     with open(OFFSET_FILE, "w") as f:
         json.dump({"next_offset": next_offset}, f)
 
+SPARSE_MODEL = "Qdrant/bm42-all-minilm-l6-v2-attentions"
+cache_dir = os.path.join(Path(os.getcwd()),'models')
+sparse_model = SparseTextEmbedding(model_name=SPARSE_MODEL,cache_dir=cache_dir, kwargs={"local_files_only": True})
+
 
 def generate_and_add_sparse_vector_to_records(records):
-    SPARSE_MODEL = "Qdrant/bm42-all-minilm-l6-v2-attentions"
-    cache_dir = os.path.join(Path(os.getcwd()),'models')
-    sparse_model = SparseTextEmbedding(model_name=SPARSE_MODEL,cache_dir=cache_dir)
     updated_records = []
 
     for record in records:
@@ -239,13 +240,15 @@ def run_migration_with_auto_restart(
 
 
 def forward(client):
-    ##create and add payload steps are one timr action, comment out after first run.
-    create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
-    add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
-
-    org_ids = []
-
-    run_migration_with_auto_restart(client, org_ids=org_ids)
+    ##create and add payload steps are one time action, comment out after first run.
+    # create_hybrid_collection(client=client, new_collection_name=NEW_COLLECTION_NAME)
+    # add_payload_indexes(client=client, collection_name=NEW_COLLECTION_NAME)
+    try:
+        org_ids = []
+        run_migration_with_auto_restart(client, org_ids=org_ids)
+        client.close()
+    except KeyboardInterrupt:
+        client.close()
 
 
 def backward(client):

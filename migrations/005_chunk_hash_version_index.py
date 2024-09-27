@@ -3,17 +3,18 @@ from qdrant_client.http.models.models import PayloadSchemaType
 
 
 def forward(client: QdrantClient):
-    client.create_payload_index(
-        collection_name="dobby-be-springworks-collection-sharded",
-        field_name="chunk_hash",
-        field_schema=PayloadSchemaType.KEYWORD,
-    )
+    pass
+    # client.create_payload_index(
+    #     collection_name="dobby-be-springworks-collection-sharded",
+    #     field_name="chunk_hash",
+    #     field_schema=PayloadSchemaType.KEYWORD,
+    # )
 
-    client.create_payload_index(
-        collection_name="dobby-be-springworks-collection-sharded",
-        field_name="version",
-        field_schema=PayloadSchemaType.KEYWORD,
-    )
+    # client.create_payload_index(
+    #     collection_name="dobby-be-springworks-collection-sharded",
+    #     field_name="version",
+    #     field_schema=PayloadSchemaType.KEYWORD,
+    # )
 
 
 def backward(client: QdrantClient):
